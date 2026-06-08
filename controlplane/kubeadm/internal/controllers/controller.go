@@ -600,6 +600,13 @@ func (r *KubeadmControlPlaneReconciler) reconcile(ctx context.Context, controlPl
 	if err := r.reconcileCertificateExpiries(ctx, controlPlane); err != nil {
 		return ctrl.Result{}, err
 	}
+
+	// Defragment etcd members whose defrag rule is satisfied. This runs last so that it
+	// never blocks higher-priority operations (scaling, rolling updates, remediation).
+	if result, err := r.reconcileEtcdDefragmentation(ctx, controlPlane); err != nil || !result.IsZero() {
+		return result, err
+	}
+
 	return ctrl.Result{}, nil
 }
 

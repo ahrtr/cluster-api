@@ -78,6 +78,10 @@ func (src *KubeadmControlPlane) ConvertTo(dstRaw conversion.Hub) error {
 	// Recover other values
 	if ok {
 		bootstrapv1beta1.RestoreKubeadmConfigSpec(&restored.Spec.KubeadmConfigSpec, &dst.Spec.KubeadmConfigSpec)
+		// EtcdMaintenance (including MinDefragInterval) is a v1beta2-only field; restore from annotation.
+		dst.Spec.EtcdMaintenance = restored.Spec.EtcdMaintenance
+		// EtcdMemberDefragTimes is a v1beta2-only status field; restore from annotation.
+		dst.Status.EtcdMemberDefragTimes = restored.Status.EtcdMemberDefragTimes
 	}
 
 	if src.Spec.RemediationStrategy != nil {

@@ -4748,6 +4748,39 @@ Package v1beta2 contains API Schema definitions for the kubeadm v1beta2 API grou
 
 
 
+#### EtcdMaintenanceSpec
+
+
+
+EtcdMaintenanceSpec defines settings for automatic etcd maintenance operations.
+
+
+
+_Appears in:_
+- [KubeadmControlPlaneSpec](#kubeadmcontrolplanespec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `defragRule` _string_ | defragRule is a boolean expression evaluated independently for each etcd member to decide<br />whether defragmentation should be performed on that member.<br />The following variables are available:<br />  - dbSize:       total size of the etcd database file, in bytes<br />  - dbSizeInUse:  total size actually in use in the etcd database, in bytes<br />  - dbSizeFree:   total unused space (dbSize - dbSizeInUse), in bytes<br />  - dbQuota:      etcd storage quota in bytes; resolved from the etcd Status response<br />                  (etcd v3.6+), then from spec.kubeadmConfigSpec.clusterConfiguration.etcd.local.extraArgs<br />                  quota-backend-bytes, then defaulting to 2 GiB<br />  - dbQuotaUsage: ratio of database size to quota (dbSize / dbQuota)<br />Supported operators: <, <=, >, >=, ==, !=, &&, \|\|, !, ()<br />Arithmetic: +, -, *, /<br />Examples:<br />  "dbQuotaUsage > 0.8 \|\| dbSizeFree > 209715200"<br />  "dbSize > dbQuota*80/100 && dbSizeFree > 100*1024*1024"<br />If empty or not set, defragmentation is disabled. |  | MaxLength: 512 <br />Optional: \{\} <br /> |
+| `minDefragIntervalSeconds` _integer_ | minDefragIntervalSeconds is the minimum number of seconds that must elapse<br />between two consecutive defragmentations of the same etcd member.<br />The interval is enforced independently per member, so all members in a cluster<br />can be defragmented in rapid succession (one per reconcile, 5 s apart) and each<br />member will not be defragmented again until its own timer has expired.<br />Defaults to 3600 (1 hour) when set to 0 or not specified. |  | Minimum: 0 <br />Optional: \{\} <br /> |
+
+
+#### EtcdMemberDefragStatus
+
+
+
+EtcdMemberDefragStatus records when an etcd member was last defragmented.
+
+
+
+_Appears in:_
+- [KubeadmControlPlaneStatus](#kubeadmcontrolplanestatus)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ | name is the name of the etcd member. |  | MaxLength: 253 <br />MinLength: 1 <br />Required: \{\} <br /> |
+
+
 #### KubeadmControlPlane
 
 
@@ -5008,6 +5041,7 @@ _Appears in:_
 | `rollout` _[KubeadmControlPlaneRolloutSpec](#kubeadmcontrolplanerolloutspec)_ | rollout allows you to configure the behaviour of rolling updates to the control plane Machines.<br />It allows you to require that all Machines are replaced before or after a certain time,<br />and allows you to define the strategy used during rolling replacements. |  | MinProperties: 1 <br />Optional: \{\} <br /> |
 | `remediation` _[KubeadmControlPlaneRemediationSpec](#kubeadmcontrolplaneremediationspec)_ | remediation controls how unhealthy Machines are remediated. |  | MinProperties: 1 <br />Optional: \{\} <br /> |
 | `machineNaming` _[MachineNamingSpec](#machinenamingspec)_ | machineNaming allows changing the naming pattern used when creating Machines.<br />InfraMachines & KubeadmConfigs will use the same name as the corresponding Machines. |  | MinProperties: 1 <br />Optional: \{\} <br /> |
+| `etcdMaintenance` _[EtcdMaintenanceSpec](#etcdmaintenancespec)_ | etcdMaintenance defines settings for automatic etcd maintenance operations such as defragmentation.<br />Only applies when using managed (local) etcd; has no effect with external etcd. |  | Optional: \{\} <br /> |
 
 
 #### KubeadmControlPlaneStatus
@@ -5034,6 +5068,7 @@ _Appears in:_
 | `version` _string_ | version represents the minimum Kubernetes version for the control plane machines<br />in the cluster. |  | MaxLength: 256 <br />MinLength: 1 <br />Optional: \{\} <br /> |
 | `observedGeneration` _integer_ | observedGeneration is the latest generation observed by the controller. |  | Minimum: 1 <br />Optional: \{\} <br /> |
 | `lastRemediation` _[LastRemediationStatus](#lastremediationstatus)_ | lastRemediation stores info about last remediation performed. |  | Optional: \{\} <br /> |
+| `etcdMemberDefragTimes` _[EtcdMemberDefragStatus](#etcdmemberdefragstatus) array_ | etcdMemberDefragTimes records the last time each etcd member was defragmented.<br />Used by the controller to enforce spec.etcdMaintenance.minDefragIntervalSeconds<br />independently for each member. |  | MaxItems: 32 <br />Optional: \{\} <br /> |
 | `deprecated` _[KubeadmControlPlaneDeprecatedStatus](#kubeadmcontrolplanedeprecatedstatus)_ | deprecated groups all the status fields that are deprecated and will be removed when all the nested field are removed. |  | Optional: \{\} <br /> |
 
 

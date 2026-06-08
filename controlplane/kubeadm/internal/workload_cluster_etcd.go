@@ -141,3 +141,27 @@ type EtcdMemberStatus struct {
 	Name       string
 	Responsive bool
 }
+
+// EtcdMemberStatus fetches the current database size and role metrics for the etcd member
+// running on the named node.
+func (w *Workload) EtcdMemberStatus(ctx context.Context, nodeName string) (*etcd.MemberStatus, error) {
+	etcdClient, err := w.etcdClientGenerator.forFirstAvailableNode(ctx, []string{nodeName})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create etcd client for node %s", nodeName)
+	}
+	defer etcdClient.Close()
+
+	return etcdClient.MemberStatus(ctx)
+}
+
+// DefragEtcdMember defragments the etcd member running on the named node,
+// reclaiming space freed by prior compactions.
+func (w *Workload) DefragEtcdMember(ctx context.Context, nodeName string) error {
+	etcdClient, err := w.etcdClientGenerator.forFirstAvailableNode(ctx, []string{nodeName})
+	if err != nil {
+		return errors.Wrapf(err, "failed to create etcd client for node %s", nodeName)
+	}
+	defer etcdClient.Close()
+
+	return etcdClient.Defragment(ctx)
+}

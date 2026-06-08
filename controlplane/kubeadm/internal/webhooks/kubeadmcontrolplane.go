@@ -37,6 +37,7 @@ import (
 	bootstrapv1 "sigs.k8s.io/cluster-api/api/bootstrap/kubeadm/v1beta2"
 	controlplanev1 "sigs.k8s.io/cluster-api/api/controlplane/kubeadm/v1beta2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	kcpetcd "sigs.k8s.io/cluster-api/controlplane/kubeadm/internal/etcd"
 	topologynames "sigs.k8s.io/cluster-api/internal/topology/names"
 	"sigs.k8s.io/cluster-api/internal/util/taints"
 	"sigs.k8s.io/cluster-api/util/container"
@@ -323,6 +324,35 @@ func validateKubeadmControlPlaneSpec(s controlplanev1.KubeadmControlPlaneSpec, p
 
 	allErrs = append(allErrs, validateRolloutAndCertValidityFields(s.Rollout, s.KubeadmConfigSpec.ClusterConfiguration, s.Replicas, pathPrefix)...)
 	allErrs = append(allErrs, validateNaming(s.MachineNaming, pathPrefix.Child("machineNaming"))...)
+	allErrs = append(allErrs, validateEtcdMaintenance(s, pathPrefix)...)
+	return allErrs
+}
+
+func validateEtcdMaintenance(s controlplanev1.KubeadmControlPlaneSpec, pathPrefix *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if s.EtcdMaintenance == nil || s.EtcdMaintenance.DefragRule == "" {
+		return allErrs
+	}
+
+	etcdMaintenancePath := pathPrefix.Child("etcdMaintenance")
+
+	if s.KubeadmConfigSpec.ClusterConfiguration.Etcd.External.IsDefined() {
+		allErrs = append(allErrs, field.Forbidden(
+			etcdMaintenancePath,
+			"etcd maintenance is only supported for stacked (managed) etcd; remove this field when using external etcd",
+		))
+		return allErrs
+	}
+
+	if err := kcpetcd.ValidateDefragRule(s.EtcdMaintenance.DefragRule); err != nil {
+		allErrs = append(allErrs, field.Invalid(
+			etcdMaintenancePath.Child("defragRule"),
+			s.EtcdMaintenance.DefragRule,
+			err.Error(),
+		))
+	}
+
 	return allErrs
 }
 

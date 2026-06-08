@@ -81,6 +81,15 @@ type fakeWorkloadCluster struct {
 
 	forwardEtcdLeadershipCalled int
 	removeEtcdMemberCalled      int
+
+	// EtcdMemberStatuses maps node name → status returned by EtcdMemberStatus.
+	EtcdMemberStatuses map[string]*etcd.MemberStatus
+	// EtcdMemberStatusErrors maps node name → error returned by EtcdMemberStatus.
+	EtcdMemberStatusErrors map[string]error
+	// DefraggedMembers records the node names passed to DefragEtcdMember, in call order.
+	DefraggedMembers []string
+	// DefragEtcdMemberErr is returned by every DefragEtcdMember call if non-nil.
+	DefragEtcdMemberErr error
 }
 
 func (f *fakeWorkloadCluster) ForwardEtcdLeadership(_ context.Context, _ *clusterv1.Machine, leaderCandidate *clusterv1.Machine, _ []*internal.Node) error {
@@ -110,6 +119,21 @@ func (f *fakeWorkloadCluster) UpdateEtcdLocalInKubeadmConfigMap(bootstrapv1.Loca
 func (f *fakeWorkloadCluster) RemoveEtcdMember(_ context.Context, _ *etcd.Member, _ []*internal.Node) error {
 	f.removeEtcdMemberCalled++
 	return nil
+}
+
+func (f *fakeWorkloadCluster) EtcdMemberStatus(_ context.Context, nodeName string) (*etcd.MemberStatus, error) {
+	if err, ok := f.EtcdMemberStatusErrors[nodeName]; ok {
+		return nil, err
+	}
+	if status, ok := f.EtcdMemberStatuses[nodeName]; ok {
+		return status, nil
+	}
+	return &etcd.MemberStatus{}, nil
+}
+
+func (f *fakeWorkloadCluster) DefragEtcdMember(_ context.Context, nodeName string) error {
+	f.DefraggedMembers = append(f.DefraggedMembers, nodeName)
+	return f.DefragEtcdMemberErr
 }
 
 func (f *fakeWorkloadCluster) UpdateClusterConfiguration(context.Context, semver.Version, ...func(*bootstrapv1.ClusterConfiguration)) error {
